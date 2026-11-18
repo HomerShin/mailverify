@@ -1,0 +1,5 @@
+# MailVerify — Cloudflare Pages 部署配置
+# SPA fallback（首页以外的路径都回 index.html）
+# 但 /api/* 不被这条匹配（Pages Functions 会先拦截）
+
+/*    /index.html   200

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — MailVerify</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  /* Dashboard 专用样式 */
+  .dash-wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+  .dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+  .dash-header h1 { font-size: 1.75rem; }
+  .dash-sub { color: var(--text-muted); font-size: 0.85rem; }
+
+  /* 上传区 */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 48px 24px;
+    text-align: center;
+    background: var(--card);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 32px;
+  }
+  .upload-zone:hover, .upload-zone.dragging {
+    border-color: var(--primary);
+    background: rgba(59,130,246,0.05);
+  }
+  .upload-zone input[type="file"] { display: none; }
+  .upload-icon { font-size: 3rem; margin-bottom: 12px; }
+  .upload-zone h3 { margin-bottom: 8px; }
+  .upload-zone p { color: var(--text-muted); font-size: 0.85rem; }
+  .upload-zone code {
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+
+  /* 进度条 */
+  .progress-section {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .progress-section.active { display: block; }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .progress-pct {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+  }
+  .progress-bar {
+    height: 10px;
+    background: var(--bg);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), #a855f7);
+    border-radius: 5px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* 统计卡片 */
+  .stats-grid {
+    display: none;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stats-grid.active { display: grid; }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-valid .stat-num { color: var(--success); }
+  .stat-invalid .stat-num { color: var(--danger); }
+  .stat-risky .stat-num { color: var(--warning); }
+  .stat-disposable .stat-num { color: var(--danger); }
+  .stat-catchall .stat-num { color: #a855f7; }
+  .stat-unknown .stat-num { color: var(--text-muted); }
+
+  /* 下载按钮区 */
+  .download-section {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .download-section.active { display: block; }
+  .download-section h3 { margin-bottom: 16px; text-align: center; }
+  .download-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .dl-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px;
+    border-radius: 10px;
+    text-decoration: none;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    transition: all 0.2s;
+  }
+  .dl-btn:hover { transform: translateY(-2px); border-color: var(--primary); }
+  .dl-btn span.dl-count { font-size: 1.2rem; font-weight: 800; }
+  .dl-valid { border-color: rgba(34,197,94,0.4); }
+  .dl-valid:hover { border-color: var(--success); background: rgba(34,197,94,0.1); }
+  .dl-invalid { border-color: rgba(239,68,68,0.4); }
+  .dl-invalid:hover { border-color: var(--danger); background: rgba(239,68,68,0.1); }
+  .dl-risky { border-color: rgba(245,158,11,0.4); }
+  .dl-risky:hover { border-color: var(--warning); background: rgba(245,158,11,0.1); }
+  .dl-all { border-color: var(--border); }
+  .dl-all:hover { border-color: var(--primary); }
+
+  /* 原因分布 */
+  .reasons-section {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .reasons-section.active { display: block; }
+  .reasons-section h3 { margin-bottom: 12px; }
+  .reason-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+  }
+  .reason-name { width: 140px; color: var(--text-muted); }
+  .reason-track {
+    flex: 1;
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .reason-fill { height: 100%; background: var(--danger); border-radius: 4px; }
+  .reason-count { width: 50px; text-align: right; font-weight: 600; }
+
+  /* 历史 */
+  .history-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+  .history-section h2 { margin-bottom: 16px; font-size: 1.2rem; }
+  .history-empty { color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 24px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="logo">✉️ MailVerify</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="#history">History</a>
+      <a href="#pricing" class="btn btn-primary">Upgrade</a>
+    </div>
+  </div>
+</nav>
+
+<div class="dash-wrap">
+  <div class="dash-header">
+    <div>
+      <h1>Dashboard</h1>
+      <div class="dash-sub">Clean your email list with real SMTP verification</div>
+    </div>
+    <div class="dash-sub">Free: <strong id="quotaDisplay">100</strong>/day</div>
+  </div>
+
+  <!-- 上传区 -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.txt">
+    <div class="upload-icon">📤</div>
+    <h3>Drop your CSV here</h3>
+    <p>or click to browse. Any format works — we auto-detect the email column.</p>
+    <p style="margin-top:8px">Max 100,000 emails per batch. Results are saved for 30 days.</p>
+    <p style="margin-top:12px"><code>email</code>, <code>user@domain.com</code>, <code>Email Address</code> — all supported</p>
+  </div>
+
+  <!-- 进度条 -->
+  <div class="progress-section" id="progressSection">
+    <div class="progress-header">
+      <div>
+        <strong>Verifying...</strong>
+        <span style="color:var(--text-muted);font-size:0.85rem;margin-left:8px">Job: <code id="jobId">—</code></span>
+      </div>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-meta">
+      <span id="progressCount">0 / 0 emails</span>
+      <span id="progressStatus">processing...</span>
+    </div>
+  </div>
+
+  <!-- 统计卡片 -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card stat-valid"><div class="stat-num" id="statValid">0</div><div class="stat-label">Valid</div></div>
+    <div class="stat-card stat-invalid"><div class="stat-num" id="statInvalid">0</div><div class="stat-label">Invalid</div></div>
+    <div class="stat-card stat-risky"><div class="stat-num" id="statRisky">0</div><div class="stat-label">Risky</div></div>
+    <div class="stat-card stat-disposable"><div class="stat-num" id="statDisp">0</div><div class="stat-label">Disposable</div></div>
+    <div class="stat-card stat-catchall"><div class="stat-num" id="statCatchall">0</div><div class="stat-label">Catch-all</div></div>
+    <div class="stat-card stat-unknown"><div class="stat-num" id="statUnknown">0</div><div class="stat-label">Unknown</div></div>
+  </div>
+
+  <!-- 下载按钮 -->
+  <div class="download-section" id="downloadSection">
+    <h3>✅ Verification Complete</h3>
+    <div class="download-grid">
+      <a class="dl-btn dl-valid" id="dlValid"><span>✅ Valid</span><span class="dl-count" id="dlValidCount">0</span></a>
+      <a class="dl-btn dl-invalid" id="dlInvalid"><span>❌ Invalid</span><span class="dl-count" id="dlInvalidCount">0</span></a>
+      <a class="dl-btn dl-risky" id="dlRisky"><span>⚠️ Risky</span><span class="dl-count" id="dlRiskyCount">0</span></a>
+      <a class="dl-btn dl-all" id="dlAll"><span>📊 All Results</span><span class="dl-count" id="dlAllCount">0</span></a>
+    </div>
+  </div>
+
+  <!-- 原因分布 -->
+  <div class="reasons-section" id="reasonsSection">
+    <h3>Top Invalid Reasons</h3>
+    <div id="reasonsList"></div>
+  </div>
+
+  <!-- 历史 -->
+  <div class="history-section" id="history">
+    <h2>Recent Batches</h2>
+    <div id="historyList"><div class="history-empty">No recent batches yet.</div></div>
+  </div>
+</div>
+
+<script>
+// TODO: 生产环境换 Pages Functions 代理
+const API = 'http://localhost:8765';
+let currentJobId = null;
+
+// 本地历史存储（localStorage，以后换后端 API）
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('mv_history') || '[]'); }
+  catch { return []; }
+}
+function saveHistory(item) {
+  const h = getHistory();
+  h.unshift(item);
+  if (h.length > 20) h.pop();
+  localStorage.setItem('mv_history', JSON.stringify(h));
+  renderHistory();
+}
+function renderHistory() {
+  const list = getHistory();
+  const box = document.getElementById('historyList');
+  if (!list.length) {
+    box.innerHTML = '<div class="history-empty">No recent batches yet.</div>';
+    return;
+  }
+  box.innerHTML = list.map(h => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <code style="color:var(--primary)">${h.job_id}</code>
+        <span style="color:var(--text-muted);margin-left:12px">${h.total} emails</span>
+        <span style="color:var(--success);margin-left:12px">${h.valid_count || 0} valid</span>
+      </div>
+      <span style="color:var(--text-muted);font-size:0.8rem">${h.time}</span>
+    </div>
+  `).join('');
+}
+renderHistory();
+
+// 拖拽上传
+const zone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+zone.addEventListener('click', () => fileInput.click());
+zone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  zone.classList.add('dragging');
+});
+zone.addEventListener('dragleave', () => zone.classList.remove('dragging'));
+zone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  zone.classList.remove('dragging');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (f) handleFile(f);
+});
+
+async function handleFile(file) {
+  // 只能 CSV 或 TXT（xlsx 后端暂不支持）
+  if (!/\.(csv|txt)$/i.test(file.name)) {
+    alert('Please upload a .csv or .txt file.');
+    return;
+  }
+
+  // 隐藏上传区，显示进度
+  zone.style.display = 'none';
+  document.getElementById('progressSection').classList.add('active');
+  document.getElementById('jobId').textContent = 'submitting...';
+  document.getElementById('progressPct').textContent = '0%';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressCount').textContent = '0 / 0 emails';
+
+  // 上传
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const resp = await fetch(`${API}/batch`, { method: 'POST', body: form });
+    if (!resp.ok) throw new Error((await resp.json()).detail || 'Upload failed');
+    const data = await resp.json();
+    currentJobId = data.job_id;
+    document.getElementById('jobId').textContent = currentJobId;
+
+    // 轮询进度
+    pollProgress();
+  } catch (err) {
+    alert('Upload failed: ' + err.message);
+    resetUI();
+  }
+}
+
+function pollProgress() {
+  if (!currentJobId) return;
+
+  fetch(`${API}/result/${currentJobId}`)
+    .then(r => r.json())
+    .then(data => {
+      const pct = data.progress_pct || 0;
+      document.getElementById('progressPct').textContent = pct + '%';
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressCount').textContent = `${data.processed} / ${data.total} emails`;
+      document.getElementById('progressStatus').textContent = data.status;
+
+      if (data.status === 'done') {
+        showResults(data);
+      } else if (data.status === 'error') {
+        alert('Batch failed: ' + (data.error || 'unknown'));
+        resetUI();
+      } else {
+        setTimeout(pollProgress, 1500);
+      }
+    })
+    .catch(err => {
+      console.error('Poll error:', err);
+      setTimeout(pollProgress, 2000);
+    });
+}
+
+function showResults(data) {
+  // 隐藏进度
+  document.getElementById('progressSection').classList.remove('active');
+
+  const s = data.stats || {};
+
+  // 统计卡片
+  document.getElementById('statsGrid').classList.add('active');
+  document.getElementById('statValid').textContent = s.valid_count || 0;
+  document.getElementById('statInvalid').textContent = s.invalid_count || 0;
+  document.getElementById('statRisky').textContent = s.risky_count || 0;
+  document.getElementById('statDisp').textContent = s.disposable_count || 0;
+  document.getElementById('statCatchall').textContent = s.catchall_count || 0;
+  document.getElementById('statUnknown').textContent = s.unknown_count || 0;
+
+  // 下载按钮
+  document.getElementById('downloadSection').classList.add('active');
+  document.getElementById('dlValidCount').textContent = s.valid_count || 0;
+  document.getElementById('dlInvalidCount').textContent = s.invalid_count || 0;
+  document.getElementById('dlRiskyCount').textContent = s.risky_count + (s.disposable_count || 0) + (s.catchall_count || 0);
+  document.getElementById('dlAllCount').textContent = data.total;
+
+  // 绑定下载链接
+  const baseUrl = `${API}/result/${currentJobId}/download?type=`;
+  document.getElementById('dlValid').href = baseUrl + 'valid';
+  document.getElementById('dlInvalid').href = baseUrl + 'invalid';
+  document.getElementById('dlRisky').href = baseUrl + 'risky';
+  document.getElementById('dlAll').href = baseUrl + 'all';
+
+  // 原因分布
+  const reasons = s.top_invalid_reasons || [];
+  if (reasons.length) {
+    document.getElementById('reasonsSection').classList.add('active');
+    const max = Math.max(...reasons.map(r => r[1]));
+    document.getElementById('reasonsList').innerHTML = reasons.map(([name, count]) => `
+      <div class="reason-bar">
+        <div class="reason-name">${name}</div>
+        <div class="reason-track"><div class="reason-fill" style="width:${(count/max*100).toFixed(1)}%"></div></div>
+        <div class="reason-count">${count}</div>
+      </div>
+    `).join('');
+  }
+
+  // 保存历史
+  saveHistory({
+    job_id: data.job_id,
+    total: data.total,
+    valid_count: s.valid_count,
+    time: new Date().toLocaleString(),
+  });
+
+  // 底部加一个 "Verify Another Batch" 按钮
+  const newBatchBtn = document.createElement('div');
+  newBatchBtn.style.cssText = 'text-align:center;margin-top:24px';
+  newBatchBtn.innerHTML = '<button class="btn btn-outline" onclick="resetUI()">📤 Verify Another Batch</button>';
+  document.getElementById('downloadSection').appendChild(newBatchBtn);
+}
+
+function resetUI() {
+  currentJobId = null;
+  zone.style.display = 'block';
+  document.getElementById('progressSection').classList.remove('active');
+  document.getElementById('statsGrid').classList.remove('active');
+  document.getElementById('downloadSection').classList.remove('active');
+  document.getElementById('reasonsSection').classList.remove('active');
+  fileInput.value = '';
+}
+</script>
+</body>
+</html>
